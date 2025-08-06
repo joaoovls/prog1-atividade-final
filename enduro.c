@@ -34,15 +34,29 @@ int velocidade_carro = 100;
 bool gameOver = false;
 bool começarJogo = false;
 
+//funções da biblioteca ncurses.h
+
+
+
 //funções
-void entradaTeclado() {
+void entradaTeclado(char key) {
     #ifdef _WIN32
-    #else 
-     
+
+    #else
+        key = getch();
+        switch (key) {
+            case 'a':
+            case 'A':
+                //movimentação para a esquerda <--
+            case 'd':
+            case 'D':
+                //movimentação para a direita <--
+        }
     #endif    
 }
 
 int main(){
+    initscr();
     while(!gameOver) {
         
     }
