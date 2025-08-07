@@ -12,7 +12,7 @@
 #endif
 
 // definições para o tamanho da rua e para o máximo de inimigos na tela
-#define LARGURA_RUA 75
+#define LARGURA_RUA 25
 #define ALTURA_RUA 10
 #define MAX_CARRO_INIMIGOS 20
 
@@ -36,30 +36,12 @@ bool começarJogo = false;
 // funções da biblioteca ncurses.h
 
 // funções
-void entradaTeclado(char key)
-{
-#ifdef _WIN32
-
-#else
-    key = getch();
-    switch (key)
-    {
-    case 'a':
-    case 'A':
-        // movimentação para a esquerda <--
-    case 'd':
-    case 'D':
-        // movimentação para a direita <--
-    }
-#endif
-}
-
 void systemClear()
 {
 #ifdef _WIN32
     system("cls");
 #else
-    system("clear");
+    clear();
 #endif
 }
 
@@ -69,32 +51,86 @@ void posicaoJogador()
     carro_jogador.y = ALTURA_RUA - 2;
 }
 
-//OBS: tem q ajeitar essa porra
-void desenharTela()
+void desenharTela(int inicio_y, int inicio_x)
 {
-    posicaoJogador();
-    systemClear();
+#ifdef _WIN32
+
+#else
+    //printa os limites da rua
     for (int i = 0; i < ALTURA_RUA; i++)
     {
-        printf("|");
+        mvaddch(inicio_y + i, inicio_x, '|');
+        mvaddch(inicio_y + i, inicio_x + LARGURA_RUA + 1, '|');
+    }
+
+    //printa os espaços vazios, o carro do jogador e os carros inimigos
+    for (int i = 0; i < ALTURA_RUA; i++)
+    {
         for (int j = 0; j < LARGURA_RUA; j++)
         {
-            char pixel = '*';
             if (j == carro_jogador.x && i == carro_jogador.y)
             {
-                pixel = 'A';
+                mvaddch(inicio_y + i, inicio_x + 1 + j, 'A');
             }
-            printf("%c", pixel);
+            else
+            {
+                mvaddch(inicio_y + i, inicio_x + 1 + j, ' ');
+            }
         }
-        printf("|\n");
     }
+#endif
 }
 
 int main()
 {
+    //inicialização do ncurses, não aparecer a tecla no terminal, desativar o cursor do terminal e apertar a tecla sem precisar digitar ENTER
     initscr();
-    // while(!gameOver) {
+    noecho();
+    curs_set(0);
+    nodelay(stdscr, TRUE);
+
+    //tamanho real do terminal
+    int terminal_x, terminal_y;
+    getmaxyx(stdscr, terminal_y, terminal_x);
+
+    //localização da rua em relação ao terminal
+    int inicio_y = (terminal_y - ALTURA_RUA) / 2;
+    int inicio_x = (terminal_x - LARGURA_RUA) / 2;
+
     posicaoJogador();
-    desenharTela();
-    //}
+
+    //controles do jogador e desenho na tela
+    char key;
+    while ((key = getch()) != 'q')
+    {
+#ifdef _WIN32
+
+#else
+        switch (key)
+        {
+        case 'a':
+        case 'A':
+            if (carro_jogador.x > 0)
+            {
+                carro_jogador.x--;
+            }
+            break;
+
+        case 'd':
+        case 'D':
+            if (carro_jogador.x < LARGURA_RUA - 1)
+            {
+                carro_jogador.x++;
+            }
+            break;
+        }
+        systemClear();
+        desenharTela(inicio_y, inicio_x);
+        refresh();
+#endif
+    }
+
+    //encerramento do programa
+    endwin();
+    return 0;
 }
