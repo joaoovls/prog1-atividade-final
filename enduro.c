@@ -33,7 +33,6 @@ Carro carro_inimigo[MAX_CARRO_INIMIGOS];
 int dia = 1;
 int carros_ultrapassados = 0;
 int meta_ultrapassagem = 30;
-int velocidade_carro = 100;
 bool gameOver = false;
 bool começarJogo = false;
 
@@ -49,12 +48,34 @@ void systemClear()
 #endif
 }
 
-void posicaoInimigos()
+//movimentação dos carros inimigos
+void atualizarInimigos()
 {
-    srand(time(NULL));
-    carro_inimigo[MAX_CARRO_INIMIGOS].x = rand() % LARGURA_RUA + 1;
-    carro_inimigo[MAX_CARRO_INIMIGOS].y = ALTURA_RUA;
-    carro_inimigo[MAX_CARRO_INIMIGOS].active = true;
+    if (rand() % 100 < 15)
+    {
+        for (int i = 0; i < MAX_CARRO_INIMIGOS; i++)
+        {
+            if (carro_inimigo[i].active == false)
+            {
+                carro_inimigo[i].active = true;
+                carro_inimigo[i].y = 0;
+                carro_inimigo[i].x = rand() % LARGURA_RUA + 1;
+                break;
+            }
+        }
+    }
+
+    for (int i = 0; i < MAX_CARRO_INIMIGOS; i++)
+    {
+        if (carro_inimigo[i].active == true)
+        {
+            carro_inimigo[i].y++;
+            if (carro_inimigo[i].y > ALTURA_RUA + 1)
+            {
+                carro_inimigo[i].active = false;
+            }
+        }
+    }
 }
 
 void posicaoJogador()
@@ -84,14 +105,15 @@ void desenharTela(int inicio_y, int inicio_x)
 
             for (int k = 0; k < MAX_CARRO_INIMIGOS; k++)
             {
-                if (carro_inimigo[k].active == carro_inimigo[k].x && i == carro_inimigo[k].y)
+                if (carro_inimigo[k].active == true && j == carro_inimigo[k].x && i == carro_inimigo[k].y)
                 {
                     caractere_carro = CHAR_INIMIGO;
                     break;
                 }
             }
 
-            if (carro_jogador.x == j && carro_jogador.y == i) {
+            if (carro_jogador.x == j && carro_jogador.y == i)
+            {
                 caractere_carro = CHAR_JOGADOR;
             }
 
@@ -103,6 +125,7 @@ void desenharTela(int inicio_y, int inicio_x)
 
 int main()
 {
+    srand(time(NULL));
     // inicialização do ncurses, não aparecer a tecla no terminal, desativar o cursor do terminal e apertar a tecla sem precisar digitar ENTER
     initscr();
     noecho();
@@ -118,6 +141,11 @@ int main()
     int inicio_x = (terminal_x - LARGURA_RUA) / 2;
 
     posicaoJogador();
+
+    for (int i = 0; i < MAX_CARRO_INIMIGOS; i++)
+    {
+        carro_inimigo[i].active = false;
+    }
 
     // controles do jogador e desenho na tela
     char key;
@@ -144,9 +172,15 @@ int main()
             }
             break;
         }
+
+        atualizarInimigos();
+
+        // atualização da tela
         systemClear();
         desenharTela(inicio_y, inicio_x);
         refresh();
+
+        usleep(50000); //controlar os quadros por segundo
 #endif
     }
 
