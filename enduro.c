@@ -13,14 +13,18 @@
 
 // definições para o tamanho da rua e para o máximo de inimigos na tela
 #define LARGURA_RUA 25
-#define ALTURA_RUA 10
+#define ALTURA_RUA 15
 #define MAX_CARRO_INIMIGOS 20
+#define CHAR_JOGADOR 'A'
+#define CHAR_INIMIGO 'O'
+#define CHAR_VAZIO ' '
 
 // posições dos carros
 typedef struct
 {
     int x;
     int y;
+    bool active;
 } Carro;
 
 // variáveis para o sistema de dia e o carro
@@ -45,6 +49,14 @@ void systemClear()
 #endif
 }
 
+void posicaoInimigos()
+{
+    srand(time(NULL));
+    carro_inimigo[MAX_CARRO_INIMIGOS].x = rand() % LARGURA_RUA + 1;
+    carro_inimigo[MAX_CARRO_INIMIGOS].y = ALTURA_RUA;
+    carro_inimigo[MAX_CARRO_INIMIGOS].active = true;
+}
+
 void posicaoJogador()
 {
     carro_jogador.x = LARGURA_RUA / 2;
@@ -56,26 +68,34 @@ void desenharTela(int inicio_y, int inicio_x)
 #ifdef _WIN32
 
 #else
-    //printa os limites da rua
+    // printa os limites da rua
     for (int i = 0; i < ALTURA_RUA; i++)
     {
         mvaddch(inicio_y + i, inicio_x, '|');
         mvaddch(inicio_y + i, inicio_x + LARGURA_RUA + 1, '|');
     }
 
-    //printa os espaços vazios, o carro do jogador e os carros inimigos
+    // printa os espaços vazios, o carro do jogador e os carros inimigos
     for (int i = 0; i < ALTURA_RUA; i++)
     {
         for (int j = 0; j < LARGURA_RUA; j++)
         {
-            if (j == carro_jogador.x && i == carro_jogador.y)
+            char caractere_carro = CHAR_VAZIO;
+
+            for (int k = 0; k < MAX_CARRO_INIMIGOS; k++)
             {
-                mvaddch(inicio_y + i, inicio_x + 1 + j, 'A');
+                if (carro_inimigo[k].active == carro_inimigo[k].x && i == carro_inimigo[k].y)
+                {
+                    caractere_carro = CHAR_INIMIGO;
+                    break;
+                }
             }
-            else
-            {
-                mvaddch(inicio_y + i, inicio_x + 1 + j, ' ');
+
+            if (carro_jogador.x == j && carro_jogador.y == i) {
+                caractere_carro = CHAR_JOGADOR;
             }
+
+            mvaddch(inicio_y + i, inicio_x + 1 + j, caractere_carro);
         }
     }
 #endif
@@ -83,23 +103,23 @@ void desenharTela(int inicio_y, int inicio_x)
 
 int main()
 {
-    //inicialização do ncurses, não aparecer a tecla no terminal, desativar o cursor do terminal e apertar a tecla sem precisar digitar ENTER
+    // inicialização do ncurses, não aparecer a tecla no terminal, desativar o cursor do terminal e apertar a tecla sem precisar digitar ENTER
     initscr();
     noecho();
     curs_set(0);
     nodelay(stdscr, TRUE);
 
-    //tamanho real do terminal
+    // tamanho real do terminal
     int terminal_x, terminal_y;
     getmaxyx(stdscr, terminal_y, terminal_x);
 
-    //localização da rua em relação ao terminal
+    // localização da rua em relação ao terminal
     int inicio_y = (terminal_y - ALTURA_RUA) / 2;
     int inicio_x = (terminal_x - LARGURA_RUA) / 2;
 
     posicaoJogador();
 
-    //controles do jogador e desenho na tela
+    // controles do jogador e desenho na tela
     char key;
     while ((key = getch()) != 'q')
     {
@@ -130,7 +150,7 @@ int main()
 #endif
     }
 
-    //encerramento do programa
+    // encerramento do programa
     endwin();
     return 0;
 }
