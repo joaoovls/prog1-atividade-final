@@ -119,6 +119,8 @@ void desenharTela(int inicio_y, int inicio_x)
 
             mvaddch(inicio_y + i, inicio_x + 1 + j, caractere_carro);
         }
+
+        mvprintw(ALTURA_RUA - 1, inicio_x + 1, "Dias: %d", dia);
     }
 #endif
 }
@@ -151,6 +153,11 @@ int main()
     char key;
     while ((key = getch()) != 'q')
     {
+
+        if (gameOver == true) {
+            break;
+        }
+
 #ifdef _WIN32
 
 #else
@@ -174,6 +181,16 @@ int main()
         }
 
         atualizarInimigos();
+
+        //detecta se algum carro inimigo colidiu com o jogador
+        for (int i = 0; i < MAX_CARRO_INIMIGOS; i++)
+    {
+        if (carro_inimigo[i].y == carro_jogador.y && carro_inimigo[i].x == carro_jogador.x)
+        {
+            gameOver = true;
+            break;
+        }
+    }
 
         // atualização da tela
         systemClear();
