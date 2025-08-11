@@ -24,18 +24,25 @@ typedef struct
 {
     int x;
     int y;
-    int velocidade;
     bool active;
 } Carro;
 
-// variáveis para o sistema de dia e o carro
+// variáveis relacionadas aos carros
 Carro carro_jogador;
 Carro carro_inimigo[MAX_CARRO_INIMIGOS];
 int dia = 1;
 int carros_ultrapassados = 0;
 int meta_ultrapassagem = 60;
-int usleep_velocidade = 50000; // pra usar no usleep
+int usleep_velocidade = 60000; // pra usar no usleep
+
+// para a pontuação
+int contador = 0;
+int score = 0;
+
+// chance de spawn dos inimigos
 int chance_spawn = 15;
+
+// inicialização e finalização
 bool gameOver = false;
 bool começarJogo = false;
 
@@ -79,10 +86,9 @@ void desenharTela(int inicio_y, int inicio_x, int HUD_x)
         }
     }
 
-    carro_jogador.velocidade = usleep_velocidade / 1000;
     mvprintw(ALTURA_RUA / 2 + 2, HUD_x - 2, "Dias: %d", dia);
     mvprintw(ALTURA_RUA / 2 + 3, HUD_x - 2, "Ultrapassagens restantes: %d", meta_ultrapassagem);
-    mvprintw(ALTURA_RUA / 2 + 4, HUD_x - 2, "Velocidade: %dkm/h", carro_jogador.velocidade);
+    mvprintw(ALTURA_RUA / 2 + 4, HUD_x - 2, "Pontuação: %d", score);
 
 #endif
 }
@@ -118,7 +124,8 @@ void logicaInimigos()
         {
             meta_ultrapassagem--;
         }
-        else if (carro_inimigo[i].y == carro_jogador.y && carro_inimigo[i].x == carro_jogador.x)
+
+        if (carro_inimigo[i].y == carro_jogador.y && carro_inimigo[i].x == carro_jogador.x)
         {
             gameOver = true;
             break;
@@ -135,6 +142,13 @@ void posicaoJogador()
 // lógica de pontuação e sistema do jogo
 void pontuacao()
 {
+    contador++;
+    if (contador >= 10)
+    {
+        score++;
+        contador = 0;
+    }
+
     if (meta_ultrapassagem <= 0)
     {
         dia++;
@@ -189,10 +203,10 @@ int main()
     char key;
     while ((key = getch()) != 'q')
     {
-
-        // if (gameOver == true) {
-        //     break;
-        // }
+        if (gameOver == true)
+        {
+            break;
+        }
 
 #ifdef _WIN32
 
@@ -223,7 +237,7 @@ int main()
         desenharTela(inicio_y, inicio_x, HUD_x);
         pontuacao();
         refresh();
-        usleep(usleep_velocidade / 4); // controlar os quadros por segundo
+        usleep(usleep_velocidade); // controlar os quadros por segundo
 #endif
     }
 
