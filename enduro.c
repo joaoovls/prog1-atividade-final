@@ -18,6 +18,7 @@
 #define CHAR_JOGADOR 'A'
 #define CHAR_INIMIGO 'O'
 #define CHAR_VAZIO ' '
+#define CHAR_SETA '>'
 
 // variáveis dos carros
 typedef struct
@@ -30,6 +31,7 @@ typedef struct
 // variáveis relacionadas aos carros
 Carro carro_jogador;
 Carro carro_inimigo[MAX_CARRO_INIMIGOS];
+Carro seta_menu;
 int dia = 1;
 int carros_ultrapassados = 0;
 int meta_ultrapassagem = 60;
@@ -45,6 +47,60 @@ int chance_spawn = 15;
 // inicialização e finalização
 bool gameOver = false;
 bool começarJogo = false;
+
+//menu inicial do jogo
+void menuInicial(int terminal_y, int terminal_x)
+{
+    // posição inicial da seta
+    seta_menu.y = terminal_y - 10;
+    seta_menu.x = terminal_x / 2 - 3;
+
+    char key;
+
+    //laço do menu
+    while (true)
+    {
+        clear();
+
+        attron(A_BOLD);
+        mvprintw(terminal_y - 11, terminal_x / 2, "ENDURO");
+        attroff(A_BOLD);
+        mvprintw(terminal_y - 10, terminal_x / 2, "JOGAR");
+        mvprintw(terminal_y - 8, terminal_x / 2, "COMO JOGAR");
+        mvprintw(terminal_y - 6, terminal_x / 2, "SAIR");
+
+        mvaddch(seta_menu.y, seta_menu.x, '>');
+        refresh();
+        usleep(60000);
+        
+        key = getch();
+        if (key == 'w' || key == 'W')
+        {
+            if (seta_menu.y > terminal_y - 10) {
+                 seta_menu.y -= 2;
+            }
+        }
+
+        if (key == 's' || key == 'S')
+        {
+            if (seta_menu.y < terminal_y - 6) {
+                seta_menu.y += 2;
+            }
+        }
+
+        if (key == '\n') 
+        {
+            if (seta_menu.y == terminal_y - 10) {
+                break;
+            }
+            
+            if (seta_menu.y == terminal_y - 6) {
+                endwin(); 
+                exit(0);
+            }
+        }
+    }
+}
 
 void desenharTela(int inicio_y, int inicio_x, int HUD_x)
 {
@@ -196,6 +252,8 @@ int main()
     {
         carro_inimigo[i].active = false;
     }
+
+    menuInicial(terminal_y, terminal_x);
 
     posicaoJogador();
 
