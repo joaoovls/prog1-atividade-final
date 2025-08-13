@@ -48,7 +48,7 @@ int chance_spawn = 15;
 bool gameOver = false;
 bool começarJogo = false;
 
-//menu inicial do jogo
+// menu inicial do jogo
 void menuInicial(int terminal_y, int terminal_x)
 {
     // posição inicial da seta
@@ -57,7 +57,7 @@ void menuInicial(int terminal_y, int terminal_x)
 
     char key;
 
-    //laço do menu
+    // laço do menu
     while (true)
     {
         clear();
@@ -66,36 +66,44 @@ void menuInicial(int terminal_y, int terminal_x)
         mvprintw(terminal_y - 11, terminal_x / 2, "ENDURO");
         attroff(A_BOLD);
         mvprintw(terminal_y - 10, terminal_x / 2, "JOGAR");
-        mvprintw(terminal_y - 8, terminal_x / 2, "COMO JOGAR");
-        mvprintw(terminal_y - 6, terminal_x / 2, "SAIR");
+        mvprintw(terminal_y - 8, terminal_x / 2, "SAIR");
 
         mvaddch(seta_menu.y, seta_menu.x, '>');
         refresh();
         usleep(60000);
-        
+
         key = getch();
-        if (key == 'w' || key == 'W')
+        switch (key)
         {
-            if (seta_menu.y > terminal_y - 10) {
-                 seta_menu.y -= 2;
-            }
-        }
-
-        if (key == 's' || key == 'S')
-        {
-            if (seta_menu.y < terminal_y - 6) {
-                seta_menu.y += 2;
-            }
-        }
-
-        if (key == '\n') 
-        {
-            if (seta_menu.y == terminal_y - 10) {
+        case 'w':
+        case 'W':
+            if (seta_menu.y > terminal_y - 10)
+            {
+                seta_menu.y -= 2;
                 break;
             }
-            
-            if (seta_menu.y == terminal_y - 6) {
-                endwin(); 
+
+        case 's':
+        case 'S':
+        {
+            if (seta_menu.y < terminal_y - 6)
+            {
+                seta_menu.y += 2;
+                break;
+            }
+        }
+        }
+
+        if (key == '\n')
+        {
+            if (seta_menu.y == terminal_y - 10)
+            {
+                break;
+            }
+
+            if (seta_menu.y == terminal_y - 8)
+            {
+                endwin();
                 exit(0);
             }
         }
@@ -179,6 +187,7 @@ void logicaInimigos()
         if (carro_inimigo[i].active == true && carro_inimigo[i].y > carro_jogador.y + 2)
         {
             meta_ultrapassagem--;
+            carros_ultrapassados++;
         }
 
         if (carro_inimigo[i].y == carro_jogador.y && carro_inimigo[i].x == carro_jogador.x)
@@ -263,7 +272,17 @@ int main()
     {
         if (gameOver == true)
         {
-            break;
+            while (true)
+            {
+                systemClear();
+                attron(A_BOLD);
+                mvprintw(terminal_y - 11, terminal_x / 2, "Você perdeu!");
+                attroff(A_BOLD);
+                mvprintw(terminal_y - 9, terminal_x / 2 - 17, "Você sobreviveu por %d dias e ultrapassou %d carros", dia, carros_ultrapassados);
+                usleep(60000);
+                refresh();
+                getch();
+            }
         }
 
 #ifdef _WIN32
