@@ -37,6 +37,8 @@ int carros_ultrapassados = 0;
 int meta_ultrapassagem = 60;
 int usleep_velocidade = 60000; // pra usar no usleep
 
+bool noite;
+
 // para a pontuação
 int contador = 0;
 int score = 0;
@@ -44,9 +46,8 @@ int score = 0;
 // chance de spawn dos inimigos
 int chance_spawn = 15;
 
-// inicialização e finalização
+// finalização
 bool gameOver = false;
-bool começarJogo = false;
 
 // menu inicial do jogo
 void menuInicial(int terminal_y, int terminal_x)
@@ -85,7 +86,7 @@ void menuInicial(int terminal_y, int terminal_x)
         case 's':
         case 'S':
         {
-            if (seta_menu.y < terminal_y - 6)
+            if (seta_menu.y < terminal_y - 8)
             {
                 seta_menu.y += 2;
                 break;
@@ -227,6 +228,15 @@ void pontuacao()
 
         meta_ultrapassagem = 45 + (dia * 15);
     }
+
+    if (dia % 2 == 0)
+    {
+        noite = true;
+    }
+    else
+    {
+        noite = false;
+    }
 }
 
 // limpar o sistema
@@ -244,6 +254,14 @@ int main()
     // mudanças no terminal
     srand(time(NULL));
     initscr();
+
+    // mudança de cor do terminal
+    start_color();
+    // Em main(), depois de start_color()
+    init_pair(1, COLOR_BLACK, COLOR_CYAN);
+    init_pair(2, COLOR_WHITE, COLOR_BLACK);   
+    init_pair(3, COLOR_YELLOW, COLOR_WHITE); 
+    init_pair(4, COLOR_WHITE, COLOR_BLACK);
     noecho();
     curs_set(0);
     nodelay(stdscr, TRUE);
