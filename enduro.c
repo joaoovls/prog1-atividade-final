@@ -37,7 +37,7 @@ int carros_ultrapassados = 0;
 int meta_ultrapassagem = 60;
 int usleep_velocidade = 60000; // pra usar no usleep
 
-bool noite;
+bool noite = false;
 
 // para a pontuação
 int contador = 0;
@@ -115,11 +115,30 @@ void desenharTela(int inicio_y, int inicio_x, int HUD_x)
 #ifdef _WIN32
 
 #else
+    // mudança de cor do cenário
+    if (noite == true)
+    {
+        attron(COLOR_PAIR(2));
+    }
+    else
+    {
+        attron(COLOR_PAIR(1));
+    }
+
     // printa os limites da rua
     for (int i = 0; i < ALTURA_RUA; i++)
     {
         mvaddch(inicio_y + i, inicio_x, '|');
         mvaddch(inicio_y + i, inicio_x + LARGURA_RUA + 1, '|');
+    }
+
+    if (noite == true)
+    {
+        bkgd(COLOR_PAIR(2));
+    }
+    else
+    {
+        bkgd(COLOR_PAIR(1));
     }
 
     // printa os espaços vazios, o carro do jogador e os carros inimigos
@@ -259,8 +278,8 @@ int main()
     start_color();
     // Em main(), depois de start_color()
     init_pair(1, COLOR_BLACK, COLOR_CYAN);
-    init_pair(2, COLOR_WHITE, COLOR_BLACK);   
-    init_pair(3, COLOR_YELLOW, COLOR_WHITE); 
+    init_pair(2, COLOR_WHITE, COLOR_BLACK);
+    init_pair(3, COLOR_YELLOW, COLOR_WHITE);
     init_pair(4, COLOR_WHITE, COLOR_BLACK);
     noecho();
     curs_set(0);
