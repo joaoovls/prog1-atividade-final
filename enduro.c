@@ -67,8 +67,7 @@ void menuInicial(int terminal_y, int terminal_x)
         attroff(A_BOLD);
         mvprintw(terminal_y - 10, terminal_x / 2, "JOGAR");
         mvprintw(terminal_y - 8, terminal_x / 2, "SAIR");
-
-        mvaddch(seta_menu.y, seta_menu.x, '>');
+        mvaddch(seta_menu.y, seta_menu.x, CHAR_SETA);
         refresh();
         usleep(60000);
 
@@ -179,12 +178,14 @@ void logicaInimigos()
         if (carro_inimigo[i].active == true)
         {
             carro_inimigo[i].y++;
+
             if (carro_inimigo[i].y > ALTURA_RUA + 1)
             {
                 carro_inimigo[i].active = false;
             }
         }
-        if (carro_inimigo[i].active == true && carro_inimigo[i].y > carro_jogador.y + 2)
+
+        if (carro_inimigo[i].active == true && carro_inimigo[i].y > ALTURA_RUA)
         {
             meta_ultrapassagem--;
             carros_ultrapassados++;
