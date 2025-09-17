@@ -2,14 +2,8 @@
 #include <stdlib.h> //usar para a função de randomizar número
 #include <time.h>   //usar para a função de randomizar número
 #include <stdbool.h>
-
-#ifdef _WIN32
-#include <windows.h> //funções de sleep e system clear na versão windows
-#include <conio.h>   //ler a entrada do teclado para sistema windows
-#else
 #include <unistd.h>  //função usleep e system clear
 #include <ncurses.h> //ler a entrada do teclado para sistemas LINUX
-#endif
 
 // definições para o tamanho da rua e para o máximo de inimigos na tela
 #define LARGURA_RUA 25
@@ -110,36 +104,35 @@ void menuInicial(int terminal_y, int terminal_x)
     }
 }
 
-void desenharTela(int inicio_y, int inicio_x, int HUD_x)
+void desenharTela(int terminal_y, int terminal_x, int inicio_y, int inicio_x, int HUD_x)
 {
-#ifdef _WIN32
 
-#else
     // mudança de cor do cenário
-    if (noite == true)
+    int cor_ceu = noite ? 2 : 1;
+
+    attron(COLOR_PAIR(cor_ceu));
+    for (int y = 0; y < terminal_y; y++)
     {
-        attron(COLOR_PAIR(2));
+        for (int x = 0; x < terminal_x; x++)
+        {
+            mvaddch(y, x, ' ');
+        }
     }
-    else
-    {
-        attron(COLOR_PAIR(1));
-    }
+    attroff(COLOR_PAIR(cor_ceu));
 
     // printa os limites da rua
+    attron(COLOR_PAIR(cor_ceu));
     for (int i = 0; i < ALTURA_RUA; i++)
     {
         mvaddch(inicio_y + i, inicio_x, '|');
         mvaddch(inicio_y + i, inicio_x + LARGURA_RUA + 1, '|');
     }
+    attroff(COLOR_PAIR(cor_ceu));
 
-    if (noite == true)
-    {
-        bkgd(COLOR_PAIR(2));
-    }
-    else
-    {
-        bkgd(COLOR_PAIR(1));
-    }
+    int cor_estrada = noite ? 4 : 3;
+    attron(COLOR_PAIR(cor_estrada));
+    if (noite)
+        attron(A_BOLD);
 
     // printa os espaços vazios, o carro do jogador e os carros inimigos
     for (int i = 0; i < ALTURA_RUA; i++)
@@ -169,11 +162,15 @@ void desenharTela(int inicio_y, int inicio_x, int HUD_x)
         }
     }
 
+    if (noite)
+        attroff(A_BOLD);
+    attroff(COLOR_PAIR(cor_estrada));
+
+    attron(COLOR_PAIR(cor_ceu));
     mvprintw(ALTURA_RUA / 2 + 2, HUD_x - 2, "Dias: %d", dia);
     mvprintw(ALTURA_RUA / 2 + 3, HUD_x - 2, "Ultrapassagens restantes: %d", meta_ultrapassagem);
     mvprintw(ALTURA_RUA / 2 + 4, HUD_x - 2, "Pontuação: %d", score);
-
-#endif
+    attroff(COLOR_PAIR(cor_ceu));
 }
 
 // movimentação dos carros inimigos
@@ -258,16 +255,6 @@ void pontuacao()
     }
 }
 
-// limpar o sistema
-void systemClear()
-{
-#ifdef _WIN32
-    system("cls");
-#else
-    clear();
-#endif
-}
-
 int main()
 {
     // mudanças no terminal
@@ -279,7 +266,7 @@ int main()
     // Em main(), depois de start_color()
     init_pair(1, COLOR_BLACK, COLOR_CYAN);
     init_pair(2, COLOR_WHITE, COLOR_BLACK);
-    init_pair(3, COLOR_YELLOW, COLOR_WHITE);
+    init_pair(3, COLOR_WHITE, COLOR_BLACK);
     init_pair(4, COLOR_WHITE, COLOR_BLACK);
     noecho();
     curs_set(0);
@@ -312,7 +299,7 @@ int main()
         {
             while (true)
             {
-                systemClear();
+                clear();
                 attron(A_BOLD);
                 mvprintw(terminal_y - 11, terminal_x / 2, "Você perdeu!");
                 attroff(A_BOLD);
@@ -323,9 +310,6 @@ int main()
             }
         }
 
-#ifdef _WIN32
-
-#else
         switch (key)
         {
         case 'a':
@@ -348,15 +332,14 @@ int main()
         logicaInimigos();
 
         // atualização da tela
-        systemClear();
-        desenharTela(inicio_y, inicio_x, HUD_x);
+        clear();
+        desenharTela(terminal_y, terminal_x,inicio_y, inicio_x, HUD_x);
         pontuacao();
         refresh();
         usleep(usleep_velocidade); // controlar os quadros por segundo
-#endif
-    }
 
-    // encerramento do programa
-    endwin();
+        // encerramento do programa
+        endwin();
+    }
     return 0;
 }
