@@ -1,16 +1,17 @@
-#include <stdio.h>
 #include <stdlib.h> //usar para a função de randomizar número
 #include <time.h>   //usar para a função de randomizar número
 #include <stdbool.h>
 #include <unistd.h>  //função usleep e system clear
 #include <ncurses.h> //ler a entrada do teclado para sistemas LINUX
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_mixer.h>
 
 // definições para o tamanho da rua e para o máximo de inimigos na tela
 #define LARGURA_RUA 50
 #define ALTURA_RUA 35
-#define MAX_CARRO_INIMIGOS 20
-#define CHAR_JOGADOR 'A'
-#define CHAR_INIMIGO 'O'
+#define MAX_CARRO_INIMIGOS 8
+#define STR_CARRO1 ".--."
+#define STR_CARRO2 "|____|"
 #define CHAR_VAZIO ' '
 #define CHAR_SETA '>'
 #define MAX_NUVENS 10
@@ -32,6 +33,8 @@ typedef struct
     int x;
     int y;
     bool active;
+    int largura;
+    int altura;
 } Carro;
 
 // variáveis relacionadas aos carros
@@ -46,13 +49,15 @@ bool noite = false;
 int contador = 0;
 int score = 0;
 int chance_spawn = 15;
-bool gameOver = false;
+bool gameOver = true;
+int iframes = 0;
 int contador_animacao = 0;
+// parte de cima = ".--.", "|____|, 6;2"
 
 void menuInicial(int terminal_y, int terminal_x)
 {
     // posição inicial da seta
-    seta_menu.y = terminal_y - 10;
+    seta_menu.y = terminal_y - 29;
     seta_menu.x = terminal_x / 2 - 3;
 
     char key;
@@ -63,10 +68,10 @@ void menuInicial(int terminal_y, int terminal_x)
         clear();
 
         attron(A_BOLD);
-        mvprintw(terminal_y - 11, terminal_x / 2, "ENDURO");
+        mvprintw(terminal_y - 33, terminal_x / 2, "ENDURO");
         attroff(A_BOLD);
-        mvprintw(terminal_y - 10, terminal_x / 2, "JOGAR");
-        mvprintw(terminal_y - 8, terminal_x / 2, "SAIR");
+        mvprintw(terminal_y - 29, terminal_x / 2, "JOGAR");
+        mvprintw(terminal_y - 27, terminal_x / 2, "SAIR");
         mvaddch(seta_menu.y, seta_menu.x, CHAR_SETA);
         refresh();
         usleep(60000);
@@ -76,7 +81,7 @@ void menuInicial(int terminal_y, int terminal_x)
         {
         case 'w':
         case 'W':
-            if (seta_menu.y > terminal_y - 10)
+            if (seta_menu.y > terminal_y - 29)
             {
                 seta_menu.y -= 2;
                 break;
@@ -84,7 +89,7 @@ void menuInicial(int terminal_y, int terminal_x)
         case 's':
         case 'S':
         {
-            if (seta_menu.y < terminal_y - 8)
+            if (seta_menu.y < terminal_y - 27)
             {
                 seta_menu.y += 2;
                 break;
@@ -94,12 +99,12 @@ void menuInicial(int terminal_y, int terminal_x)
 
         if (key == '\n')
         {
-            if (seta_menu.y == terminal_y - 10)
+            if (seta_menu.y == terminal_y - 29)
             {
                 break;
             }
 
-            if (seta_menu.y == terminal_y - 8)
+            if (seta_menu.y == terminal_y - 27)
             {
                 endwin();
                 exit(0);
@@ -112,8 +117,6 @@ void desenharNuvem(int terminal_x)
 {
     if (!noite)
     {
-        if (rand() % 100 > 50)
-            return;
         {
             for (int i = 0; i < MAX_NUVENS; i++)
             {
@@ -222,12 +225,16 @@ void desenharTela(int terminal_y, int terminal_x, int inicio_y, int inicio_x, in
     attroff(COLOR_PAIR(3));
 
     attron(COLOR_PAIR(4));
-   for (int k = 0; k < MAX_CARRO_INIMIGOS; k++) {
-        if (carro_inimigo[k].active) {
-            mvaddch(inicio_y + carro_inimigo[k].y, inicio_x + 1 + carro_inimigo[k].x, CHAR_INIMIGO);
+    for (int k = 0; k < MAX_CARRO_INIMIGOS; k++)
+    {
+        if (carro_inimigo[k].active)
+        {
+            mvprintw(inicio_y + carro_inimigo[k].y, inicio_x + 1 + carro_inimigo[k].x, STR_CARRO1);
+            mvprintw(inicio_y + carro_inimigo[k].y + 1, inicio_x + carro_inimigo[k].x, STR_CARRO2);
         }
     }
-    mvaddch(inicio_y + carro_jogador.y, inicio_x + 1 + carro_jogador.x, CHAR_JOGADOR);
+    mvprintw(inicio_y + carro_jogador.y, inicio_x + 1 + carro_jogador.x, STR_CARRO1);
+    mvprintw(inicio_y + carro_jogador.y + 1, inicio_x + carro_jogador.x, STR_CARRO2);
     attroff(COLOR_PAIR(4));
 
     attron(COLOR_PAIR(5));
@@ -243,14 +250,30 @@ void logicaInimigos()
 {
     if (rand() % 100 < chance_spawn)
     {
-        for (int i = 0; i < MAX_CARRO_INIMIGOS; i++)
+        bool areaLivreEntreCarros = true;
+        int distanciaMinima = 6;
+
+        for (int k = 0; k < MAX_CARRO_INIMIGOS; k++)
         {
-            if (carro_inimigo[i].active == false)
+            if (carro_inimigo[k].active && carro_inimigo[k].y < distanciaMinima)
             {
-                carro_inimigo[i].active = true;
-                carro_inimigo[i].y = 0;
-                carro_inimigo[i].x = rand() % LARGURA_RUA + 1;
+                areaLivreEntreCarros = false;
                 break;
+            }
+        }
+
+        if (areaLivreEntreCarros)
+        {
+            for (int i = 0; i < MAX_CARRO_INIMIGOS; i++)
+            {
+                if (carro_inimigo[i].active == false)
+                {
+                    carro_inimigo[i].active = true;
+                    carro_inimigo[i].y = 0;
+
+                    carro_inimigo[i].x = rand() % (LARGURA_RUA - 6);
+                    break;
+                }
             }
         }
     }
@@ -261,22 +284,28 @@ void logicaInimigos()
         {
             carro_inimigo[i].y++;
 
-            if (carro_inimigo[i].y > ALTURA_RUA - 1)
+            if (carro_inimigo[i].y > ALTURA_RUA - 2)
             {
                 carro_inimigo[i].active = false;
             }
-        }
 
-        if (carro_inimigo[i].active == true && carro_inimigo[i].y > ALTURA_RUA - 2)
-        {
-            meta_ultrapassagem--;
-            carros_ultrapassados++;
-        }
+            if (carro_inimigo[i].active == true && carro_inimigo[i].y > ALTURA_RUA - 3)
+            {
+                meta_ultrapassagem--;
+                carros_ultrapassados++;
+            }
 
-        if (carro_inimigo[i].y == carro_jogador.y && carro_inimigo[i].x == carro_jogador.x)
-        {
-            // gameOver = true;
-            break;
+            bool colisao_x = (carro_jogador.x < carro_inimigo[i].x + 6) && (carro_jogador.x + 6 > carro_inimigo[i].x);
+
+            bool colisao_y = (carro_jogador.y < carro_inimigo[i].y + 2) && (carro_jogador.y + 2 > carro_inimigo[i].y);
+
+            if (iframes <= 0)
+            {
+                if (colisao_x && colisao_y)
+                {
+                    gameOver = true;
+                }
+            }
         }
     }
 }
@@ -284,7 +313,7 @@ void logicaInimigos()
 void posicaoJogador()
 {
     carro_jogador.x = LARGURA_RUA / 2;
-    carro_jogador.y = ALTURA_RUA - 2;
+    carro_jogador.y = ALTURA_RUA - 3;
 }
 
 // lógica de pontuação e sistema do jogo
@@ -308,7 +337,13 @@ void pontuacao()
         }
 
         meta_ultrapassagem = 45 + (dia * 15);
+
         usleep_velocidade -= 3000;
+
+        if (usleep_velocidade <= 25000)
+        {
+            usleep_velocidade = 25000;
+        }
     }
 
     if (dia % 2 == 0)
@@ -319,6 +354,34 @@ void pontuacao()
     {
         noite = false;
     }
+}
+
+void reiniciarJogo()
+{
+    posicaoJogador();
+
+    dia = 1;
+    carros_ultrapassados = 0;
+    meta_ultrapassagem = 60;
+    usleep_velocidade = 60000;
+    noite = false;
+    contador = 0;
+    score = 0;
+    chance_spawn = 15;
+    gameOver = false;
+    iframes = 5;
+
+    for (int i = 0; i < MAX_CARRO_INIMIGOS; i++)
+    {
+        carro_inimigo[i].active = false;
+    }
+
+    for (int i = 0; i < MAX_NUVENS; i++)
+    {
+        nuvens[i].active = false;
+    }
+
+    flushinp();
 }
 
 int main()
@@ -334,9 +397,13 @@ int main()
         nuvens[i].active = false;
     }
 
-    // mudanças no terminal
+    // inicialização ncurses e sdl2 mixer
     srand(time(NULL));
     initscr();
+    SDL_Init(SDL_INIT_AUDIO);
+    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
+    Mix_Chunk *somMotor = Mix_LoadWAV("/home/joao/Downloads/motor_enduro.wav");
+    bool somInicializado = false;
 
     // mudança de cor do terminal
     start_color();
@@ -368,18 +435,48 @@ int main()
     char key;
     while ((key = getch()) != 'q')
     {
+        if (!somInicializado)
+        {
+            Mix_PlayChannel(-1, somMotor, -1);
+            somInicializado = true;
+        }
+
+        if (iframes > 0)
+        {
+            iframes--;
+        }
+
         if (gameOver == true)
         {
+            Mix_HaltChannel(-1);
+            somInicializado = false;
+
+            char x;
             while (true)
             {
                 clear();
                 attron(A_BOLD);
-                mvprintw(terminal_y - 11, terminal_x / 2, "Você perdeu!");
+                mvprintw(terminal_y - 28, terminal_x / 2, "Você perdeu!");
                 attroff(A_BOLD);
-                mvprintw(terminal_y - 9, terminal_x / 2 - 17, "Você sobreviveu por %d dias e ultrapassou %d carros", dia, carros_ultrapassados);
+                mvprintw(terminal_y - 23, terminal_x / 2 - 17, "Você sobreviveu por %d dias e ultrapassou %d carros", dia, carros_ultrapassados);
+                mvprintw(terminal_y - 17, terminal_x / 2 - 17, "Aperte Q para sair");
+                mvprintw(terminal_y - 17, terminal_x / 2 + 7, "Aperte R para Reiniciar");
+
                 usleep(60000);
                 refresh();
-                getch();
+
+                x = getch();
+                if (x == 'r' || x == 'R')
+                {
+                    reiniciarJogo();
+                    break;
+                }
+                else if (x == 'q' || x == 'Q')
+                {
+                    endwin();
+                    exit(0);
+                }
+                usleep(60000);
             }
         }
 
@@ -389,15 +486,15 @@ int main()
         case 'A':
             if (carro_jogador.x > 0)
             {
-                carro_jogador.x--;
+                carro_jogador.x -= 3;
             }
             break;
 
         case 'd':
         case 'D':
-            if (carro_jogador.x < LARGURA_RUA - 1)
+            if (carro_jogador.x < LARGURA_RUA - 6)
             {
-                carro_jogador.x++;
+                carro_jogador.x += 3;
             }
             break;
         }
@@ -413,8 +510,14 @@ int main()
         pontuacao();
         refresh();
         usleep(usleep_velocidade); // controlar os quadros por segundo
-        // encerramento do programa
-        endwin();
     }
+
+    // encerramento do programa
+    Mix_FreeChunk(somMotor);
+    Mix_CloseAudio();
+    SDL_Quit();
+
+    endwin();
+
     return 0;
 }
