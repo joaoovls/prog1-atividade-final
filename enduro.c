@@ -6,13 +6,25 @@
 #include <ncurses.h> //ler a entrada do teclado para sistemas LINUX
 
 // definições para o tamanho da rua e para o máximo de inimigos na tela
-#define LARGURA_RUA 25
-#define ALTURA_RUA 15
+#define LARGURA_RUA 50
+#define ALTURA_RUA 35
 #define MAX_CARRO_INIMIGOS 20
 #define CHAR_JOGADOR 'A'
 #define CHAR_INIMIGO 'O'
 #define CHAR_VAZIO ' '
 #define CHAR_SETA '>'
+#define MAX_NUVENS 10
+
+typedef struct
+{
+    float x;
+    int y;
+    int largura;
+    float velocidade;
+    bool active;
+} Nuvem;
+
+Nuvem nuvens[MAX_NUVENS];
 
 // variáveis dos carros
 typedef struct
@@ -29,21 +41,14 @@ Carro seta_menu;
 int dia = 1;
 int carros_ultrapassados = 0;
 int meta_ultrapassagem = 60;
-int usleep_velocidade = 60000; // pra usar no usleep
-
+int usleep_velocidade = 60000;
 bool noite = false;
-
-// para a pontuação
 int contador = 0;
 int score = 0;
-
-// chance de spawn dos inimigos
 int chance_spawn = 15;
-
-// finalização
 bool gameOver = false;
+int contador_animacao = 0;
 
-// menu inicial do jogo
 void menuInicial(int terminal_y, int terminal_x)
 {
     // posição inicial da seta
@@ -76,7 +81,6 @@ void menuInicial(int terminal_y, int terminal_x)
                 seta_menu.y -= 2;
                 break;
             }
-
         case 's':
         case 'S':
         {
@@ -104,14 +108,62 @@ void menuInicial(int terminal_y, int terminal_x)
     }
 }
 
+void desenharNuvem(int terminal_x)
+{
+    if (!noite)
+    {
+        if (rand() % 100 > 50)
+            return;
+        {
+            for (int i = 0; i < MAX_NUVENS; i++)
+            {
+                if (!nuvens[i].active)
+                {
+                    nuvens[i].active = true;
+                    nuvens[i].x = terminal_x;
+                    nuvens[i].y = rand() % 5;
+                    nuvens[i].largura = 5 + rand() % 10;
+                    nuvens[i].velocidade = 0.2f + (float)(rand() % 5) / 3.0f;
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void atualizarNuvem()
+{
+    for (int i = 0; i < MAX_NUVENS; i++)
+    {
+        if (nuvens[i].active)
+        {
+            nuvens[i].x -= nuvens[i].velocidade;
+            if (nuvens[i].x + nuvens[i].largura < 0)
+            {
+                nuvens[i].active = false;
+            }
+        }
+    }
+}
+
 void desenharTela(int terminal_y, int terminal_x, int inicio_y, int inicio_x, int HUD_x)
 {
 
     // mudança de cor do cenário
     int cor_ceu = noite ? 2 : 1;
 
-    attron(COLOR_PAIR(cor_ceu));
+    attron(COLOR_PAIR(5));
     for (int y = 0; y < terminal_y; y++)
+    {
+        for (int x = 0; x < terminal_x; x++)
+        {
+            mvaddch(y, x, ' ');
+        }
+    }
+    attroff(COLOR_PAIR(5));
+
+    attron(COLOR_PAIR(cor_ceu));
+    for (int y = 0; y < ALTURA_RUA / 2 - 7; y++)
     {
         for (int x = 0; x < terminal_x; x++)
         {
@@ -120,57 +172,70 @@ void desenharTela(int terminal_y, int terminal_x, int inicio_y, int inicio_x, in
     }
     attroff(COLOR_PAIR(cor_ceu));
 
+    attron(COLOR_PAIR(3));
+    for (int i = 0; i < MAX_NUVENS; i++)
+    {
+        if (nuvens[i].active)
+        {
+            for (int j = 0; j < nuvens[i].largura; j++)
+            {
+                int posX = (int)nuvens[i].x + j;
+                if (posX >= 0 && posX < terminal_x)
+                {
+                    mvaddch(nuvens[i].y, posX, ' ');
+                }
+            }
+        }
+    }
+    attroff(COLOR_PAIR(3));
+
+    attron(COLOR_PAIR(4));
+    for (int i = 0; i < ALTURA_RUA; i++)
+    {
+        for (int j = 0; j < LARGURA_RUA; j++)
+        {
+            mvaddch(inicio_y + i, inicio_x + 1 + j, ' ');
+        }
+    }
+    attroff(COLOR_PAIR(4));
+
+    attron(COLOR_PAIR(3));
+    for (int i = 0; i < ALTURA_RUA; i++)
+    {
+        if ((i - contador_animacao % 8 + 8) % 8 < 4)
+        {
+            int faixa1_x = inicio_x + LARGURA_RUA / 3;
+            int faixa2_x = inicio_x + (LARGURA_RUA * 2) / 3;
+            mvaddch(inicio_y + i, faixa1_x, '|');
+            mvaddch(inicio_y + i, faixa2_x, '|');
+        }
+    }
+    attroff(COLOR_PAIR(3));
+
     // printa os limites da rua
-    attron(COLOR_PAIR(cor_ceu));
+    attron(COLOR_PAIR(3));
     for (int i = 0; i < ALTURA_RUA; i++)
     {
         mvaddch(inicio_y + i, inicio_x, '|');
         mvaddch(inicio_y + i, inicio_x + LARGURA_RUA + 1, '|');
     }
-    attroff(COLOR_PAIR(cor_ceu));
+    attroff(COLOR_PAIR(3));
 
-    int cor_estrada = noite ? 4 : 3;
-    attron(COLOR_PAIR(cor_estrada));
-    if (noite)
-        attron(A_BOLD);
-
-    // printa os espaços vazios, o carro do jogador e os carros inimigos
-    for (int i = 0; i < ALTURA_RUA; i++)
-    {
-        for (int j = 0; j < LARGURA_RUA; j++)
-        {
-            attron(A_BOLD);
-            mvaddch(ALTURA_RUA, inicio_x + j + 1, '=');
-            attroff(A_BOLD);
-            char caractere_carro = CHAR_VAZIO;
-
-            for (int k = 0; k < MAX_CARRO_INIMIGOS; k++)
-            {
-                if (carro_inimigo[k].active == true && j == carro_inimigo[k].x && i == carro_inimigo[k].y)
-                {
-                    caractere_carro = CHAR_INIMIGO;
-                    break;
-                }
-            }
-
-            if (carro_jogador.x == j && carro_jogador.y == i)
-            {
-                caractere_carro = CHAR_JOGADOR;
-            }
-
-            mvaddch(inicio_y + i, inicio_x + 1 + j, caractere_carro);
+    attron(COLOR_PAIR(4));
+   for (int k = 0; k < MAX_CARRO_INIMIGOS; k++) {
+        if (carro_inimigo[k].active) {
+            mvaddch(inicio_y + carro_inimigo[k].y, inicio_x + 1 + carro_inimigo[k].x, CHAR_INIMIGO);
         }
     }
+    mvaddch(inicio_y + carro_jogador.y, inicio_x + 1 + carro_jogador.x, CHAR_JOGADOR);
+    attroff(COLOR_PAIR(4));
 
-    if (noite)
-        attroff(A_BOLD);
-    attroff(COLOR_PAIR(cor_estrada));
-
-    attron(COLOR_PAIR(cor_ceu));
-    mvprintw(ALTURA_RUA / 2 + 2, HUD_x - 2, "Dias: %d", dia);
-    mvprintw(ALTURA_RUA / 2 + 3, HUD_x - 2, "Ultrapassagens restantes: %d", meta_ultrapassagem);
-    mvprintw(ALTURA_RUA / 2 + 4, HUD_x - 2, "Pontuação: %d", score);
-    attroff(COLOR_PAIR(cor_ceu));
+    attron(COLOR_PAIR(5));
+    mvprintw(ALTURA_RUA + 12, HUD_x + 30, "Dias: %d", dia);
+    mvprintw(ALTURA_RUA + 12, HUD_x + 45, "Ultrapassagens restantes: %d", meta_ultrapassagem);
+    mvprintw(ALTURA_RUA + 15, HUD_x + 27, "Pontuação: %d", score);
+    mvprintw(ALTURA_RUA + 15, HUD_x + 51, "Aperte Q para sair.");
+    attroff(COLOR_PAIR(5));
 }
 
 // movimentação dos carros inimigos
@@ -196,13 +261,13 @@ void logicaInimigos()
         {
             carro_inimigo[i].y++;
 
-            if (carro_inimigo[i].y > ALTURA_RUA + 1)
+            if (carro_inimigo[i].y > ALTURA_RUA - 1)
             {
                 carro_inimigo[i].active = false;
             }
         }
 
-        if (carro_inimigo[i].active == true && carro_inimigo[i].y > ALTURA_RUA)
+        if (carro_inimigo[i].active == true && carro_inimigo[i].y > ALTURA_RUA - 2)
         {
             meta_ultrapassagem--;
             carros_ultrapassados++;
@@ -210,7 +275,7 @@ void logicaInimigos()
 
         if (carro_inimigo[i].y == carro_jogador.y && carro_inimigo[i].x == carro_jogador.x)
         {
-            gameOver = true;
+            // gameOver = true;
             break;
         }
     }
@@ -243,6 +308,7 @@ void pontuacao()
         }
 
         meta_ultrapassagem = 45 + (dia * 15);
+        usleep_velocidade -= 3000;
     }
 
     if (dia % 2 == 0)
@@ -257,17 +323,30 @@ void pontuacao()
 
 int main()
 {
+
+    for (int i = 0; i < MAX_CARRO_INIMIGOS; i++)
+    {
+        carro_inimigo[i].active = false;
+    }
+
+    for (int i = 0; i < MAX_NUVENS; i++)
+    {
+        nuvens[i].active = false;
+    }
+
     // mudanças no terminal
     srand(time(NULL));
     initscr();
 
     // mudança de cor do terminal
     start_color();
-    // Em main(), depois de start_color()
+    init_color(8, 500, 500, 500);
     init_pair(1, COLOR_BLACK, COLOR_CYAN);
     init_pair(2, COLOR_WHITE, COLOR_BLACK);
-    init_pair(3, COLOR_WHITE, COLOR_BLACK);
-    init_pair(4, COLOR_WHITE, COLOR_BLACK);
+    init_pair(3, COLOR_WHITE, COLOR_WHITE);
+    init_pair(4, COLOR_BLACK, 8);
+    init_pair(5, COLOR_BLACK, COLOR_GREEN);
+
     noecho();
     curs_set(0);
     nodelay(stdscr, TRUE);
@@ -282,15 +361,9 @@ int main()
 
     int HUD_x = (terminal_x / 3 - 9);
 
-    for (int i = 0; i < MAX_CARRO_INIMIGOS; i++)
-    {
-        carro_inimigo[i].active = false;
-    }
-
     menuInicial(terminal_y, terminal_x);
 
     posicaoJogador();
-
     // controles do jogador e desenho na tela
     char key;
     while ((key = getch()) != 'q')
@@ -329,15 +402,17 @@ int main()
             break;
         }
 
-        logicaInimigos();
+        contador_animacao++;
 
-        // atualização da tela
+        desenharNuvem(terminal_x);
+        atualizarNuvem();
+
+        logicaInimigos();
         clear();
-        desenharTela(terminal_y, terminal_x,inicio_y, inicio_x, HUD_x);
+        desenharTela(terminal_y, terminal_x, inicio_y, inicio_x, HUD_x);
         pontuacao();
         refresh();
         usleep(usleep_velocidade); // controlar os quadros por segundo
-
         // encerramento do programa
         endwin();
     }
